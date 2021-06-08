@@ -529,7 +529,7 @@ public:
                 if (count < mHeader.entriesCountOnThisDisk.max) {
                         mHeader.entriesCountOnThisDisk = count.to!ushort().toLittleEndian();
                 } else {
-                        mHeader.entriesCountOnThisDisk = -1.to!ushort;
+                        mHeader.entriesCountOnThisDisk = mHeader.entriesCountOnThisDisk.max;
                 }
         }
 
@@ -537,7 +537,7 @@ public:
                 if (count < mHeader.entriesCount.max) {
                         mHeader.entriesCount = count.to!ushort().toLittleEndian();
                 } else {
-                        mHeader.entriesCount = -1.to!ushort;
+                        mHeader.entriesCount = mHeader.entriesCountOnThisDisk.max;
                 }
         }
 
