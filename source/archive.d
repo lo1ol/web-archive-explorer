@@ -4,9 +4,13 @@ import std.container.rbtree: RedBlackTree, redBlackTree;
 import std.path: globMatch;
 import std.range.primitives: popFront, popFrontN;
 import std.string: endsWith, indexOf, startsWith;
+import std.file: remove;
 
-import vibe.core.stream: isRandomAccessStream, isOutputStream;
+import vibe.core.stream: isRandomAccessStream, isOutputStream, pipe;
 import vibe.stream.counting: createCountingOutputStream;
+import vibe.core.path: NativePath;
+import vibe.core.file: openFile, createTempFile;
+import vibe.core.process: spawnProcess;
 
 import zip: CentralDirectoryFile, EndOfCentralDirectoryRecord, LocalFile, createBufferedInputStream,
         Zip64EndOfCentralDirectoryLocator, Zip64EndOfCentralDirectoryRecord, parse, parseAll;
@@ -64,6 +68,30 @@ void sieveArchive(InputRandomAccessStream, OutputStream)(InputRandomAccessStream
                         record.centralDirectoryOffset = centralDirectoryOffset;
                         record.write(output);
                 });
+}
+
+void createArchive(OutputStream)(string dirPath, OutputStream output)
+        if (isOutputStream!OutputStream)
+{
+	auto parentDir = NativePath(dirPath).parentPath;
+	auto baseName = NativePath(dirPath).head.name;
+
+	auto zip_tmp_file = createTempFile(".zip");
+	auto zip_tmp_file_path = zip_tmp_file.path.toString();
+	zip_tmp_file.close();
+	remove(zip_tmp_file_path);
+	
+	import vibe.core.process: Config;
+	string[] args = ["zip", "--symlinks", "--quiet", "-r", zip_tmp_file_path,  baseName];
+	auto process = spawnProcess(args, null, Config.none, parentDir);
+	scope(exit) remove(zip_tmp_file_path);
+
+	process.wait();
+
+	zip_tmp_file = openFile(zip_tmp_file_path);
+	scope(exit) zip_tmp_file.close();
+
+	pipe(zip_tmp_file, output);
 }
 
 interface ArchiveFilter {

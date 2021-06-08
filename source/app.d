@@ -16,7 +16,7 @@ import vibe.core.path: NativePath;
 import vibe.textfilter.urlencode: urlEncode;
 import vibe.core.core: runApplication;
 
-import archive: ArchiveFilter, AddDirectoryFilter, EglobFilter, PathFilter, sieveArchive;
+import archive: ArchiveFilter, AddDirectoryFilter, EglobFilter, PathFilter, sieveArchive, createArchive;
 
 import zip: LocalFile, createBufferedInputStream, parseAll;
 
@@ -103,7 +103,7 @@ void showLocalDirectory(string filePath, string urlPath,
         foreach (fi; iterateDirectory(filePath)) {
                 auto name = fi.name;
                 auto url = urlPrefix ~ chainPath(urlPath, fi.name).to!string();
-                auto downloadUrl = fi.name.endsWith(".zip") ? url : null;
+                auto downloadUrl = url ~ "?action=get";
 
                 if (fi.isDirectory || fi.name.endsWith(".zip")) {
                         name ~= '/';
@@ -121,6 +121,12 @@ void showLocalDirectory(string filePath, string urlPath,
         res.render!("template.dt", currentPath, parentUrl, files);
 }
 
+void getLocalDirectory(string dirPath, HTTPServerResponse res) {
+        res.contentType = "application/octet";
+        res.headers["Content-Disposition"] = "attachment; filename=" ~ dirPath.baseName ~ ".zip";
+        createArchive(dirPath, res.bodyWriter);
+}
+
 void processRequest(HTTPServerRequest req, HTTPServerResponse res) {
         auto urlPath = req.path.buildNormalizedPath.pathSplitter.stripLeft("..").buildPath.absolutePath("/");
         auto filePath = chainPath(gDocumentRoot, urlPath.stripLeft('/')).to!string;
@@ -135,6 +141,7 @@ void processRequest(HTTPServerRequest req, HTTPServerResponse res) {
 		switch (action) {
 		case null:
 		case "show": showLocalDirectory(filePath, urlPath, req, res); break;
+		case "get": getLocalDirectory(filePath, res); break;
 		default: throw new HTTPStatusException(400, "Unkown action: " ~ action);
 		}
 	} else if (filePath.endsWith(".zip")) {
