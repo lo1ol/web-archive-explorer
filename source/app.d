@@ -71,6 +71,7 @@ void showArchive(string filePath, string urlPath,
 
                         auto showUrl = urlPath ~ "?action=show&path=" ~ fullPath.urlEncode;
                         auto downloadUrl = urlPath ~ "?action=get&path=" ~ fullPath.urlEncode;
+			showUrl = name.endsWith('/') ? showUrl: downloadUrl;	
 
                         FileEntry fe = {name.endsWith('/'), name, file.originalSize,
                                         file.modificationTime, showUrl, downloadUrl};
